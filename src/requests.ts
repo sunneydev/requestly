@@ -109,5 +109,7 @@ class Requests {
 }
 
 export default {
-  session: (props?: RequestsProps) => new Requests(props),
+  create: function (props?: RequestsProps) {
+    new Requests(props);
+  },
 };
