@@ -1,0 +1,32 @@
+{
+  "name": "requests",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A minimal, but powerful HTTP Client for Node.js",
+  "main": "dist/requests.js",
+  "types": "dist/requests.d.ts",
+  "files": [
+    "dist/requests.js",
+    "dist/requests.d.ts"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sunneydev/requests.git"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/sunneydev/requests#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "engineStrict": true,
+  "scripts": {
+    "typecheck": "tsc",
+    "build": "tsup src/requests.ts --clean --dts --minify --metafile",
+    "publish": "npm run build && npm pack"
+  },
+  "devDependencies": {
+    "@types/node": "18.11.9",
+    "tsup": "^6.5.0",
+    "typescript": "4.9.3"
+  }
+}
