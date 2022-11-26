@@ -1,8 +1,10 @@
-interface RequestsProps {
+import * as utils from "./utils";
+
+export interface RequestsProps {
   baseUrl?: string;
 }
 
-interface RequestOptions {
+export interface RequestOptions<T = any> {
   content?:
     | "application/json"
     | "application/x-www-form-urlencoded"
@@ -11,11 +13,16 @@ interface RequestOptions {
   headers?: Record<string, string>;
   params?: Record<string, string>;
   cookies?: Record<string, string>;
+  ignoreCookies?: boolean;
 
-  body?: any;
+  body?: T;
 }
 
-class Requests {
+export interface RequestResponse<T> extends Omit<Response, "text" | "json"> {
+  data: T;
+}
+
+export class Requests {
   private _baseUrl?: string;
   private _headers: Record<string, string> = {};
   private _cookies: Record<string, string> = {};
@@ -24,11 +31,11 @@ class Requests {
     this._baseUrl = props?.baseUrl || "";
   }
 
-  private async _request<T = any>(
+  private async _request<T = any, K extends BodyInit | null | undefined = any>(
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
-    options?: RequestOptions
-  ): Promise<Response & { data: T }> {
+    options?: RequestOptions<K>
+  ): Promise<RequestResponse<T>> {
     url = this._baseUrl
       ? this._baseUrl + url
       : options?.params
@@ -48,9 +55,18 @@ class Requests {
         ...this.headers.getAll(),
         ...(options?.headers || {}),
         ...contentType,
+        Cookie: this.cookies.toString(),
       },
       body: isJson ? JSON.stringify(options?.body) : options?.body,
     });
+
+    if (!options?.ignoreCookies) {
+      Object.entries(
+        utils.parseCookies(response.headers.get("set-cookie") || "")
+      ).forEach(([key, value]) => {
+        this.cookies.set(key, value);
+      });
+    }
 
     const isJsonResponse = response.headers
       .get("Content-Type")
@@ -90,6 +106,7 @@ class Requests {
     remove: (key: string) => {
       delete this._cookies[key];
     },
+    toString: () => utils.stringifyCookies(this.cookies.getAll()),
   };
 
   public get = <T>(url: string, options?: Omit<RequestOptions, "body">) =>
@@ -108,8 +125,8 @@ class Requests {
     this._request<T>(url, "PATCH", options);
 }
 
-export default {
-  create: function (props?: RequestsProps) {
-    return new Requests(props);
-  },
-};
+function createRequests(props?: RequestsProps) {
+  return new Requests(props);
+}
+
+export default { create: createRequests };
