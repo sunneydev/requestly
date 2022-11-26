@@ -1,6 +1,6 @@
 {
   "name": "@sunney/requests",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "A minimal, but powerful HTTP Client for Node.js",
   "main": "dist/requests.js",
   "types": "dist/requests.d.ts",
@@ -20,8 +20,7 @@
   "engineStrict": true,
   "scripts": {
     "typecheck": "tsc",
-    "build": "tsup src/requests.ts --clean --dts --minify --metafile",
-    "publish": "npm run build && npm pack"
+    "build": "tsup src/requests.ts --clean --dts --minify --metafile"
   },
   "devDependencies": {
     "@types/node": "18.11.9",

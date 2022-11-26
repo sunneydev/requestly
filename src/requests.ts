@@ -110,6 +110,6 @@ class Requests {
 
 export default {
   create: function (props?: RequestsProps) {
-    new Requests(props);
+    return new Requests(props);
   },
 };
