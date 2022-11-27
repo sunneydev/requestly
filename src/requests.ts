@@ -1,7 +1,10 @@
 import * as utils from "./utils";
 
-export interface RequestsProps {
+export interface RequestsOptions {
   baseUrl?: string;
+  userAgent?: string;
+  headers?: Record<string, string>;
+  cookies?: Record<string, string>;
 }
 
 export interface RequestOptions<T = any> {
@@ -19,16 +22,24 @@ export interface RequestOptions<T = any> {
 }
 
 export interface RequestResponse<T> extends Omit<Response, "text" | "json"> {
+  request: {
+    url: string;
+    method: string;
+    options?: RequestInit;
+  };
   data: T;
 }
 
 export class Requests {
   private _baseUrl?: string;
-  private _headers: Record<string, string> = {};
-  private _cookies: Record<string, string> = {};
+  private _headers: Record<string, string>;
+  private _cookies: Record<string, string>;
 
-  constructor(props?: RequestsProps) {
-    this._baseUrl = props?.baseUrl || "";
+  constructor(opts?: RequestsOptions) {
+    this._baseUrl = opts?.baseUrl || "";
+    this._headers = opts?.headers || {};
+    this._cookies = opts?.cookies || {};
+    this._headers["User-Agent"] = opts?.userAgent || utils.defaultUserAgent;
   }
 
   private async _request<T = any, K extends BodyInit | null | undefined = any>(
@@ -48,7 +59,7 @@ export class Requests {
       "Content-Type": options?.content || "application/json",
     };
 
-    const response = await fetch(url, {
+    const requestOptions: RequestInit = {
       method,
       headers: {
         ...contentType,
@@ -58,7 +69,9 @@ export class Requests {
         Cookie: this.cookies.toString(),
       },
       body: isJson ? JSON.stringify(options?.body) : options?.body,
-    });
+    };
+
+    const response = await fetch(url, requestOptions);
 
     if (!options?.ignoreCookies) {
       Object.entries(
@@ -68,13 +81,21 @@ export class Requests {
       });
     }
 
-    const isJsonResponse = response.headers
+    const { headers } = response;
+
+    const isJsonResponse = headers
       .get("Content-Type")
       ?.includes("application/json");
 
     return {
       ...response,
-      data: isJsonResponse ? await response.json() : await response.text(),
+      request: {
+        url,
+        method,
+        options: requestOptions,
+      },
+      headers,
+      data: await (isJsonResponse ? response.json() : response.text()),
     };
   }
 
@@ -91,6 +112,12 @@ export class Requests {
     remove: (key: string) => {
       delete this._headers[key];
     },
+    update: (headers: Record<string, string>) => {
+      this._headers = {
+        ...headers,
+        ...this._headers,
+      };
+    },
   };
 
   public cookies = {
@@ -106,27 +133,38 @@ export class Requests {
     remove: (key: string) => {
       delete this._cookies[key];
     },
+    update: (cookies: Record<string, string>) => {
+      this._cookies = {
+        ...cookies,
+        ...this._cookies,
+      };
+    },
     toString: () => utils.stringifyCookies(this.cookies.getAll()),
   };
 
-  public get = <T>(url: string, options?: Omit<RequestOptions, "body">) =>
-    this._request<T>(url, "GET", options);
+  public get<T>(url: string, options?: Omit<RequestOptions, "body">) {
+    return this._request<T>(url, "GET", options);
+  }
 
-  public post = <T>(url: string, options?: RequestOptions) =>
-    this._request<T>(url, "POST", options);
+  public post<T>(url: string, options?: RequestOptions) {
+    return this._request<T>(url, "POST", options);
+  }
 
-  public put = <T>(url: string, options?: RequestOptions) =>
-    this._request<T>(url, "PUT", options);
+  public put<T>(url: string, options?: RequestOptions) {
+    return this._request<T>(url, "PUT", options);
+  }
 
-  public delete = <T>(url: string, options?: RequestOptions) =>
-    this._request<T>(url, "DELETE", options);
+  public delete<T>(url: string, options?: RequestOptions) {
+    return this._request<T>(url, "DELETE", options);
+  }
 
-  public patch = <T>(url: string, options?: RequestOptions) =>
-    this._request<T>(url, "PATCH", options);
+  public patch<T>(url: string, options?: RequestOptions) {
+    return this._request<T>(url, "PATCH", options);
+  }
 }
 
-function createRequests(props?: RequestsProps) {
-  return new Requests(props);
+function createRequests(opts?: RequestsOptions) {
+  return new Requests(opts);
 }
 
 export default { create: createRequests };
