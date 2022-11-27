@@ -1,6 +1,6 @@
 # requests
 
-A very minimal **(1.2kb)**, but powerful HTTP Client for Node.js
+A very minimal **(1.2kb)**, but powerful HTTP Client for Node.js built on top of [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API).
 
 ### Motivation
 
@@ -42,6 +42,7 @@ console.log(res.data);
 await reqs.get("https://httpbin.org/cookies/set", { params: { test: 123 } });
 
 console.log(reqs.cookies);
+// { test: 123 }
 ```
 
 #### Modify default headers/cookies really easily

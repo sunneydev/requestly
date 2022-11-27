@@ -1,6 +1,6 @@
 {
   "name": "@sunney/requests",
-  "version": "0.1.7",
+  "version": "0.1.9",
   "description": "A minimal, but powerful HTTP Client for Node.js",
   "main": "dist/requests.js",
   "types": "dist/requests.d.ts",
