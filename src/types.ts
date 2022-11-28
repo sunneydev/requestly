@@ -1,10 +1,3 @@
-export interface RequestsOptions {
-  baseUrl?: string;
-  userAgent?: string;
-  headers?: Record<string, string>;
-  cookies?: Record<string, string>;
-}
-
 export interface RequestOptions<T = any> {
   content?:
     | "application/json"

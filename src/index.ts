@@ -1,16 +1,37 @@
-import type { RequestOptions, RequestResponse, RequestsOptions } from "./types";
+import type { RequestOptions, RequestResponse } from "./types";
 import * as utils from "./utils";
+
+export interface Options {
+  baseUrl?: string;
+  userAgent?: string;
+  headers?: Record<string, string>;
+  cookies?: Record<string, string>;
+  interceptors?: {
+    onRequest?: (init: RequestInit) => void | Promise<void>;
+    onResponse?: <T>(
+      init: RequestInit,
+      response: RequestResponse<T>
+    ) => void | Promise<void>;
+  };
+}
 
 export class Requests {
   private _baseUrl?: string;
   private _headers: Record<string, string>;
   private _cookies: Record<string, string>;
+  private _onRequest?: (init: RequestInit) => void;
+  private _onResponse?: (
+    init: RequestInit,
+    response: RequestResponse<any>
+  ) => void;
 
-  constructor(opts?: RequestsOptions) {
+  constructor(opts?: Options) {
     this._baseUrl = opts?.baseUrl || "";
     this._headers = opts?.headers || {};
     this._cookies = opts?.cookies || {};
     this._headers["User-Agent"] = opts?.userAgent || utils.defaultUserAgent;
+    this._onRequest = opts?.interceptors?.onRequest;
+    this._onResponse = opts?.interceptors?.onResponse;
   }
 
   private async _request<T = any, K extends BodyInit | null | undefined = any>(
@@ -21,25 +42,46 @@ export class Requests {
     const params = options?.params ? utils.stringifyParams(options.params) : "";
     const uri = `${this._baseUrl}${url}${params}`;
 
-    const isJson = typeof options?.body === "object";
-
-    const contentType = {
-      "Content-Type": options?.content || "application/json",
+    const additionalHeaders = {
+      ...(options?.body && {
+        "Content-Type": options?.content || "application/json",
+      }),
+      ...options?.headers,
     };
 
     const requestOptions: RequestInit = {
       method,
       headers: {
-        ...contentType,
         ...this.headers.getAll(),
-        ...(options?.headers || {}),
-        ...contentType,
+        ...additionalHeaders,
         Cookie: this.cookies.toString(),
       },
-      body: isJson ? JSON.stringify(options?.body) : options?.body,
+      body:
+        typeof options?.body === "object"
+          ? JSON.stringify(options?.body)
+          : options?.body,
     };
 
-    const response = await fetch(uri, requestOptions);
+    if (this._onRequest) {
+      this._onRequest(requestOptions);
+    }
+
+    const response: RequestResponse<T> = await fetch(uri, requestOptions).then(
+      async (res) => ({
+        ...res,
+        request: {
+          url,
+          method,
+          options: requestOptions,
+        },
+        ...res.headers,
+        data: await (res.headers
+          .get("Content-Type")
+          ?.includes("application/json")
+          ? res.json()
+          : res.text()),
+      })
+    );
 
     if (!options?.ignoreCookies) {
       Object.entries(
@@ -49,22 +91,11 @@ export class Requests {
       });
     }
 
-    const { headers } = response;
+    if (this._onResponse) {
+      this._onResponse(requestOptions, response);
+    }
 
-    const isJsonResponse = headers
-      .get("Content-Type")
-      ?.includes("application/json");
-
-    return {
-      ...response,
-      request: {
-        url,
-        method,
-        options: requestOptions,
-      },
-      headers,
-      data: await (isJsonResponse ? response.json() : response.text()),
-    };
+    return response;
   }
 
   public headers = {
@@ -129,6 +160,11 @@ export class Requests {
   public patch<T>(url: string, options?: RequestOptions) {
     return this._request<T>(url, "PATCH", options);
   }
+
+  public intercept({ onRequest, onResponse }: Options["interceptors"] = {}) {
+    this._onRequest = onRequest || this._onRequest;
+    this._onResponse = onResponse || this._onResponse;
+  }
 }
 
-export default { create: (opts?: RequestsOptions) => new Requests(opts) };
+export default { create: (opts?: Options) => new Requests(opts) };
