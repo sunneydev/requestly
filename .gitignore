@@ -1,15 +1,4 @@
-# dependencies
-/node_modules
-
-# build
-/dist
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# local env files
-.env
-.env*.local
+node_modules
+.DS_Store
+dist
+*.log

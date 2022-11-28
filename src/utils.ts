@@ -1,6 +1,12 @@
 export const defaultUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36`;
 
-export function parseCookies(cookies: string) {
+export function stringifyParams(params: Record<string, string>): string {
+  const urlParams = new URLSearchParams(params).toString();
+
+  return urlParams ? `?${urlParams}` : "";
+}
+
+export function parseCookies(cookies: string): Record<string, string> {
   const parsedCookies: Record<string, string> = {};
   const cookiePairs = cookies
     .split(",")
@@ -19,7 +25,7 @@ export function parseCookies(cookies: string) {
   return parsedCookies;
 }
 
-export function stringifyCookies(cookies: Record<string, string>) {
+export function stringifyCookies(cookies: Record<string, string>): string {
   const stringified = Object.entries(cookies)
     .map(([key, value]) => encodeURI(`${key}=${value}`))
     .join("; ");

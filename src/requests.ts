@@ -1,34 +1,5 @@
+import type { RequestsOptions, RequestOptions, RequestResponse } from "./types";
 import * as utils from "./utils";
-
-export interface RequestsOptions {
-  baseUrl?: string;
-  userAgent?: string;
-  headers?: Record<string, string>;
-  cookies?: Record<string, string>;
-}
-
-export interface RequestOptions<T = any> {
-  content?:
-    | "application/json"
-    | "application/x-www-form-urlencoded"
-    | "text/plain"
-    | "text/html";
-  headers?: Record<string, string>;
-  params?: Record<string, string>;
-  cookies?: Record<string, string>;
-  ignoreCookies?: boolean;
-
-  body?: T;
-}
-
-export interface RequestResponse<T> extends Omit<Response, "text" | "json"> {
-  request: {
-    url: string;
-    method: string;
-    options?: RequestInit;
-  };
-  data: T;
-}
 
 export class Requests {
   private _baseUrl?: string;
@@ -47,11 +18,8 @@ export class Requests {
     method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
     options?: RequestOptions<K>
   ): Promise<RequestResponse<T>> {
-    url = this._baseUrl
-      ? this._baseUrl + url
-      : options?.params
-      ? url + "?" + new URLSearchParams(options.params).toString()
-      : url;
+    const params = options?.params ? utils.stringifyParams(options.params) : "";
+    const uri = `${this._baseUrl}${url}${params}`;
 
     const isJson = typeof options?.body === "object";
 
@@ -71,7 +39,7 @@ export class Requests {
       body: isJson ? JSON.stringify(options?.body) : options?.body,
     };
 
-    const response = await fetch(url, requestOptions);
+    const response = await fetch(uri, requestOptions);
 
     if (!options?.ignoreCookies) {
       Object.entries(
@@ -162,9 +130,3 @@ export class Requests {
     return this._request<T>(url, "PATCH", options);
   }
 }
-
-function createRequests(opts?: RequestsOptions) {
-  return new Requests(opts);
-}
-
-export default { create: createRequests };
