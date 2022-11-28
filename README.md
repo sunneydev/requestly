@@ -8,6 +8,7 @@ I've decided to create `requests`, because every other existing alternative `axi
 
 - Automatically setting cookies from the response
 - Modifying the existing the existing HTTP client's headers/cookies
+- Rich API of Intercepting the request/response and modifying it
 
 or... they just were too bloated
 
@@ -24,14 +25,14 @@ npm install @sunney/requests
 ```ts
 import requests from "@sunney/requests";
 
-const reqs = requests.create({
+const client = requests.create({
   baseUrl: "https://jsonplaceholder.typicode.com",
 });
 
-const res = reqs.get("/todos/1");
+const response = client.get("/todos/1");
 
-// Retrieve body (no need to `res.json()`)
-console.log(res.data);
+// Retrieve body (no need to `response.json()`)
+console.log(response.data);
 ```
 
 ## Features
@@ -39,18 +40,31 @@ console.log(res.data);
 #### Automatically save cookies from response
 
 ```ts
-await reqs.get("https://httpbin.org/cookies/set", { params: { test: 123 } });
+await client.get("https://httpbin.org/cookies/set", { params: { test: 123 } });
 
-console.log(reqs.cookies);
+console.log(client.cookies);
 // { test: 123 }
+```
+
+#### Intercepting requests and responses
+
+```ts
+// Change the request headers before sending it
+const client = requests.create();
+
+client.intercept({
+  onRequest(url, init) {
+    return { ...init, foo: "bar" };
+  },
+});
 ```
 
 #### Modify default headers/cookies really easily
 
 ```ts
 // Modifying headers
-reqs.headers.set("foo", "bar");
+client.headers.set("foo", "bar");
 
 // Modifying cookies
-reqs.cookies.set("foo", "bar");
+client.cookies.set("foo", "bar");
 ```
