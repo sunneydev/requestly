@@ -1,8 +1,7 @@
+import type { RequestsOptions } from "./types";
 import { Requests } from "./requests";
 
-type Options = ConstructorParameters<typeof Requests>[number];
-
-function createRequests(opts?: Options) {
+function createRequests(opts?: RequestsOptions) {
   return new Requests(opts);
 }
 
