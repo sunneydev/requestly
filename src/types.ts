@@ -1,3 +1,5 @@
+export type MaybePromise<T> = T | Promise<T>;
+
 export interface RequestOptions<T = any> {
   content?:
     | "application/json"
@@ -18,5 +20,6 @@ export interface RequestResponse<T> extends Omit<Response, "text" | "json"> {
     method: string;
     options?: RequestInit;
   };
+  cookies: Record<string, string>;
   data: T;
 }

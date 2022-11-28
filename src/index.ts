@@ -1,4 +1,4 @@
-import type { RequestOptions, RequestResponse } from "./types";
+import type { MaybePromise, RequestOptions, RequestResponse } from "./types";
 import * as utils from "./utils";
 
 export interface Options {
@@ -7,11 +7,15 @@ export interface Options {
   headers?: Record<string, string>;
   cookies?: Record<string, string>;
   interceptors?: {
-    onRequest?: (init: RequestInit) => void | Promise<void>;
+    onRequest?: (
+      url: string,
+      init: RequestInit
+    ) => MaybePromise<RequestInit | void>;
     onResponse?: <T>(
+      url: string,
       init: RequestInit,
       response: RequestResponse<T>
-    ) => void | Promise<void>;
+    ) => MaybePromise<void>;
   };
 }
 
@@ -19,11 +23,15 @@ export class Requests {
   private _baseUrl?: string;
   private _headers: Record<string, string>;
   private _cookies: Record<string, string>;
-  private _onRequest?: (init: RequestInit) => void;
-  private _onResponse?: (
+  private _onRequest?: (
+    url: string,
+    init: RequestInit
+  ) => MaybePromise<RequestInit | void>;
+  private _onResponse?: <T>(
+    url: string,
     init: RequestInit,
-    response: RequestResponse<any>
-  ) => void;
+    response: RequestResponse<T>
+  ) => MaybePromise<void>;
 
   constructor(opts?: Options) {
     this._baseUrl = opts?.baseUrl || "";
@@ -44,12 +52,12 @@ export class Requests {
 
     const additionalHeaders = {
       ...(options?.body && {
-        "Content-Type": options?.content || "application/json",
+        "Content-Type": options?.content || "application/json", // default to JSON, cause why not
       }),
       ...options?.headers,
     };
 
-    const requestOptions: RequestInit = {
+    let requestOptions: RequestInit = {
       method,
       headers: {
         ...this.headers.getAll(),
@@ -62,37 +70,36 @@ export class Requests {
           : options?.body,
     };
 
-    if (this._onRequest) {
-      this._onRequest(requestOptions);
-    }
+    requestOptions =
+      (await this._onRequest?.(uri, requestOptions)) || requestOptions;
 
     const response: RequestResponse<T> = await fetch(uri, requestOptions).then(
-      async (res) => ({
-        ...res,
-        request: {
-          url,
-          method,
-          options: requestOptions,
-        },
-        ...res.headers,
-        data: await (res.headers
+      async (res) => {
+        const { headers } = res;
+        const isJSON = headers
           .get("Content-Type")
-          ?.includes("application/json")
-          ? res.json()
-          : res.text()),
-      })
+          ?.includes("application/json");
+
+        const cookies = utils.parseCookies(headers.get("Set-Cookie") || "");
+
+        return {
+          ...res,
+          request: { url, method, options: requestOptions },
+          headers,
+          cookies,
+          data: await (isJSON ? res.json() : res.text()),
+        };
+      }
     );
 
     if (!options?.ignoreCookies) {
-      Object.entries(
-        utils.parseCookies(response.headers.get("set-cookie") || "")
-      ).forEach(([key, value]) => {
-        this.cookies.set(key, value);
-      });
+      Object.entries(response.cookies).forEach(([key, value]) =>
+        this.cookies.set(key, value)
+      );
     }
 
     if (this._onResponse) {
-      this._onResponse(requestOptions, response);
+      this._onResponse(uri, requestOptions, response);
     }
 
     return response;

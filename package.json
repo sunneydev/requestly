@@ -1,6 +1,6 @@
 {
   "name": "@sunney/requests",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "A minimal, but powerful HTTP Client for Node.js",
   "publishConfig": {
     "access": "public"
@@ -21,7 +21,7 @@
   },
   "types": "./dist/index.d.ts",
   "scripts": {
-    "dev": "tsup src/dev.ts --watch --format esm --onSuccess \"node dist/dev.mjs\"",
+    "dev": "tsup src/dev.ts --sourcemap --watch --format esm --onSuccess \"node dist/dev.mjs\"",
     "build-fast": "tsup src/index.ts --format cjs,esm --dts-resolve",
     "build": "pnpm run build-fast --",
     "prepublishOnly": "pnpm run build"
