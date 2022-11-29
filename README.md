@@ -29,7 +29,7 @@ const client = requests.create({
   baseUrl: "https://jsonplaceholder.typicode.com",
 });
 
-const response = client.get("/todos/1");
+const response = await client.get("/todos/1");
 
 // Retrieve body (no need to `response.json()`)
 console.log(response.data);
