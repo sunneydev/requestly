@@ -22,8 +22,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "dev": "tsup src/dev.ts --sourcemap --watch --format esm --onSuccess \"node dist/dev.mjs\"",
-    "build-fast": "tsup src/index.ts --format cjs,esm --dts-resolve",
-    "build": "pnpm run build-fast --",
+    "build": "tsup src/index.ts --format cjs,esm --dts-resolve",
     "prepublishOnly": "pnpm run build"
   },
   "license": "MIT",

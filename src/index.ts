@@ -175,3 +175,5 @@ export class Requests {
 }
 
 export default { create: (opts?: Options) => new Requests(opts) };
+
+export * from "./types";
