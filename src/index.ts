@@ -84,6 +84,10 @@ export class Requests {
 
         return {
           ...res,
+          ok: res.ok,
+          redirected: res.redirected,
+          status: res.status,
+          statusText: res.statusText,
           request: { url, method, options: requestOptions },
           headers,
           cookies,
