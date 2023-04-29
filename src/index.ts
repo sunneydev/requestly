@@ -84,6 +84,7 @@ export class Requests {
 
         return {
           ...res,
+          url: res.url,
           ok: res.ok,
           redirected: res.redirected,
           status: res.status,
