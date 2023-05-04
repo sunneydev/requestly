@@ -1,6 +1,6 @@
 {
   "name": "@sunney/requests",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A minimal, but powerful HTTP Client for Node.js",
   "publishConfig": {
     "access": "public"
@@ -24,16 +24,17 @@
     "type": "git",
     "url": "git+https://github.com/sunneydev/requests.git"
   },
-  "type": "module",
-  "module": "dist/index.mjs",
   "homepage": "https://github.com/sunneydev/requests#readme",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "exports": {
-    "types": "./dist/index.d.ts",
-    "default": "./dist/index.js"
+    "require": "./dist/index.js",
+    "import": "./dist/index.mjs"
   },
+  "types": "./dist/index.d.ts",
   "scripts": {
     "dev": "tsup src/dev.ts --sourcemap --watch --format esm --onSuccess \"node dist/dev.js\"",
-    "build": "tsup src/index.ts --format cjs,esm --dts-resolve --minify",
+    "build": "tsup src/index.ts --format esm --dts-resolve --minify",
     "prepublishOnly": "pnpm run build"
   },
   "license": "MIT",
