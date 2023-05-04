@@ -1,11 +1,13 @@
 import type { MaybePromise, RequestOptions, RequestResponse } from "./types";
 import * as utils from "./utils";
+import "isomorphic-fetch";
 
-export interface Options {
+export interface RequestsOptions {
   baseUrl?: string;
   userAgent?: string;
   headers?: Record<string, string>;
   cookies?: Record<string, string>;
+  persistCookies?: boolean;
   interceptors?: {
     onRequest?: (
       url: string,
@@ -23,6 +25,7 @@ export class Requests {
   private _baseUrl?: string;
   private _headers: Record<string, string>;
   private _cookies: Record<string, string>;
+  private _persistCookies?: boolean;
   private _onRequest?: (
     url: string,
     init: RequestInit
@@ -33,11 +36,12 @@ export class Requests {
     response: RequestResponse<T>
   ) => MaybePromise<void>;
 
-  constructor(opts?: Options) {
-    this._baseUrl = opts?.baseUrl || "";
-    this._headers = opts?.headers || {};
-    this._cookies = opts?.cookies || {};
-    this._headers["User-Agent"] = opts?.userAgent || utils.defaultUserAgent;
+  constructor(opts?: RequestsOptions) {
+    this._baseUrl = opts?.baseUrl ?? "";
+    this._headers = opts?.headers ?? {};
+    this._cookies = opts?.cookies ?? {};
+    this._persistCookies = opts?.persistCookies ?? true;
+    this._headers["User-Agent"] = opts?.userAgent ?? utils.defaultUserAgent;
     this._onRequest = opts?.interceptors?.onRequest;
     this._onResponse = opts?.interceptors?.onResponse;
   }
@@ -47,12 +51,18 @@ export class Requests {
     method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
     options?: RequestOptions<K>
   ): Promise<RequestResponse<T>> {
+    if (url.startsWith("/") && this._baseUrl == null) {
+      throw new Error(
+        "Cannot make request with relative URL without a base URL"
+      );
+    }
+
     const params = options?.params ? utils.stringifyParams(options.params) : "";
     const uri = `${this._baseUrl}${url}${params}`;
 
     const additionalHeaders = {
       ...(options?.body && {
-        "Content-Type": options?.content || "application/json", // default to JSON, cause why not
+        "Content-Type": options?.contentType || "application/json", // default to JSON, cause why not
       }),
       ...options?.headers,
     };
@@ -97,7 +107,7 @@ export class Requests {
       }
     );
 
-    if (!options?.ignoreCookies) {
+    if (options?.ignoreCookies !== false && this._persistCookies) {
       Object.entries(response.cookies).forEach(([key, value]) =>
         this.cookies.set(key, value)
       );
@@ -108,6 +118,10 @@ export class Requests {
     }
 
     return response;
+  }
+
+  public static client(opts?: RequestsOptions) {
+    return new Requests(opts);
   }
 
   public headers = {
@@ -173,12 +187,15 @@ export class Requests {
     return this._request<T>(url, "PATCH", options);
   }
 
-  public intercept({ onRequest, onResponse }: Options["interceptors"] = {}) {
-    this._onRequest = onRequest || this._onRequest;
-    this._onResponse = onResponse || this._onResponse;
+  public intercept({
+    onRequest,
+    onResponse,
+  }: RequestsOptions["interceptors"] = {}) {
+    this._onRequest = onRequest ?? this._onRequest;
+    this._onResponse = onResponse ?? this._onResponse;
   }
 }
 
-export default { create: (opts?: Options) => new Requests(opts) };
+export default new Requests();
 
-export * from "./types";
+export { RequestOptions, RequestResponse } from "./types";

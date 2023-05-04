@@ -1,7 +1,7 @@
 export type MaybePromise<T> = T | Promise<T>;
 
 export interface RequestOptions<T = any> {
-  content?:
+  contentType?:
     | "application/json"
     | "application/x-www-form-urlencoded"
     | "text/plain"
