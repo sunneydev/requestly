@@ -120,7 +120,7 @@ export class Requests {
     return response;
   }
 
-  public static client(opts?: RequestsOptions) {
+  public client(opts?: RequestsOptions) {
     return new Requests(opts);
   }
 
