@@ -19,7 +19,7 @@ To use `@sunney/requests`, follow the steps below:
 #### 1. Import the library
 
 ```typescript
-import requests from "@sunney/requests";
+import { requests } from "@sunney/requests";
 ```
 
 #### 2. Create an HTTP Client

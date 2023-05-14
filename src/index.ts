@@ -196,6 +196,7 @@ export class Requests {
   }
 }
 
-export default new Requests();
+const requests = new Requests();
 
 export { RequestOptions, RequestResponse } from "./types";
+export { requests };
