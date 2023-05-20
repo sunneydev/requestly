@@ -80,8 +80,19 @@ export class Requests {
           : options?.body,
     };
 
-    requestOptions =
-      (await this._onRequest?.(uri, requestOptions)) || requestOptions;
+    const middlewareRequestOptions = await this._onRequest?.(
+      uri,
+      requestOptions
+    );
+
+    requestOptions = {
+      ...requestOptions,
+      ...middlewareRequestOptions,
+      headers: {
+        ...requestOptions.headers,
+        ...middlewareRequestOptions?.headers,
+      },
+    };
 
     const response: RequestResponse<T> = await fetch(uri, requestOptions).then(
       async (res) => {
@@ -114,7 +125,7 @@ export class Requests {
     }
 
     if (this._onResponse) {
-      this._onResponse(uri, requestOptions, response);
+      await this._onResponse(uri, requestOptions, response);
     }
 
     return response;
