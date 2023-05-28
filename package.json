@@ -1,6 +1,6 @@
 {
   "name": "@sunney/requests",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "A minimal, but powerful HTTP Client for Node.js",
   "publishConfig": {
     "access": "public"

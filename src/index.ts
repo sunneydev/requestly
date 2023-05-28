@@ -75,7 +75,8 @@ export class Requests {
         Cookie: this.cookies.toString(),
       },
       body:
-        typeof options?.body === "object"
+        typeof options?.body === "object" &&
+        !(options?.body instanceof FormData)
           ? JSON.stringify(options?.body)
           : options?.body,
     };
