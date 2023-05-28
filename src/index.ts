@@ -76,7 +76,13 @@ export class Requests {
       },
       body:
         typeof options?.body === "object" &&
-        !(options?.body instanceof FormData)
+        !(options?.body instanceof FormData) &&
+        !(options?.body instanceof URLSearchParams) &&
+        !(options?.body instanceof Blob) &&
+        !(options?.body instanceof ArrayBuffer) &&
+        !(options?.body instanceof ReadableStream) &&
+        !(options?.body instanceof URL) &&
+        !(options?.body instanceof Uint8Array)
           ? JSON.stringify(options?.body)
           : options?.body,
     };
