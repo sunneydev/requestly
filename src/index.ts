@@ -1,31 +1,18 @@
-import type { MaybePromise, RequestOptions, RequestResponse } from "./types";
+import type {
+  MaybePromise,
+  RequestOptions,
+  RequestResponse,
+  RequestsOptions,
+} from "./types";
 import * as utils from "./utils";
 import "isomorphic-fetch";
 
-export interface RequestsOptions {
-  baseUrl?: string;
-  userAgent?: string;
-  headers?: Record<string, string>;
-  cookies?: Record<string, string>;
-  persistCookies?: boolean;
-  interceptors?: {
-    onRequest?: (
-      url: string,
-      init: RequestInit
-    ) => MaybePromise<RequestInit | void>;
-    onResponse?: <T>(
-      url: string,
-      init: RequestInit,
-      response: RequestResponse<T>
-    ) => MaybePromise<void>;
-  };
-}
-
-export class Requests {
+export class Requestly {
   private _baseUrl?: string;
-  private _headers: Record<string, string>;
-  private _cookies: Record<string, string>;
-  private _persistCookies?: boolean;
+  private _headers: Record<string, string> = {};
+  private _cookies: Record<string, string> = {};
+  private _params?: Record<string, string> = {};
+  private _storeCookies?: boolean;
   private _onRequest?: (
     url: string,
     init: RequestInit
@@ -36,11 +23,17 @@ export class Requests {
     response: RequestResponse<T>
   ) => MaybePromise<void>;
 
-  constructor(opts?: RequestsOptions) {
+  constructor(opts?: RequestsOptions | string) {
+    if (typeof opts === "string") {
+      this._baseUrl = opts;
+      return;
+    }
+
     this._baseUrl = opts?.baseUrl ?? "";
     this._headers = opts?.headers ?? {};
     this._cookies = opts?.cookies ?? {};
-    this._persistCookies = opts?.persistCookies ?? true;
+    this._params = opts?.params ?? {};
+    this._storeCookies = opts?.storeCookies ?? true;
     this._headers["User-Agent"] = opts?.userAgent ?? utils.defaultUserAgent;
     this._onRequest = opts?.interceptors?.onRequest;
     this._onResponse = opts?.interceptors?.onResponse;
@@ -57,7 +50,11 @@ export class Requests {
       );
     }
 
-    const params = options?.params ? utils.stringifyParams(options.params) : "";
+    const params = utils.stringifyParams({
+      ...options?.params,
+      ...this._params,
+    });
+
     const uri = `${this._baseUrl}${url}${params}`;
 
     const additionalHeaders = {
@@ -125,7 +122,7 @@ export class Requests {
       }
     );
 
-    if (options?.ignoreCookies !== false && this._persistCookies) {
+    if (options?.ignoreCookies !== false && this._storeCookies) {
       Object.entries(response.cookies).forEach(([key, value]) =>
         this.cookies.set(key, value)
       );
@@ -138,8 +135,16 @@ export class Requests {
     return response;
   }
 
-  public client(opts?: RequestsOptions) {
-    return new Requests(opts);
+  public create(opts?: RequestsOptions) {
+    return new Requestly(opts);
+  }
+
+  public get params() {
+    return this._params;
+  }
+
+  public set params(params: Record<string, string> | undefined) {
+    this._params = params;
   }
 
   public headers = {
@@ -214,7 +219,6 @@ export class Requests {
   }
 }
 
-const requests = new Requests();
+const requests = new Requestly();
 
-export { RequestOptions, RequestResponse } from "./types";
-export { requests };
+export default requests;

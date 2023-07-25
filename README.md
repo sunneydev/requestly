@@ -1,33 +1,51 @@
-# requests
+# requestly
 
-Introducing requests, an incredibly lightweight (1.2kb) and powerful HTTP client for Node.js, built on top of the [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API).
+#### Modern, lightweight and feature-rich powerful HTTP client for Node.js, built on top of the [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API).
 
-### Motivation
+## Features
 
-Driven by the limitations of existing JavaScript HTTP libraries, I developed `requests` with inspiration from the versatile Python `requests` library. My goal was to create a user-friendly and flexible solution for working with HTTP `requests` in JavaScript, filling the gaps left by other alternatives.
+- **Automatic Cookie Management 🍪** - No more hassle with manual cookie management, requestly takes care of saving cookies from responses automatically.
+- **Intercept Requests and Responses ⚡** - Modify requests before they are sent and responses after they are received. This is useful for adding authentication headers, logging requests, and more.
+- **Custom Instances 🛠️** - Create custom instances with a base URL, default headers, params, and more.
+- **Modify Default Headers and Cookies 📝** - Easily modify the default headers and cookies for your client.
+- **Supports TypeScript 🚀** - Built with TypeScript, requestly provides type definitions out of the box.
+- **Environment Independent 🌎** - Be it Node.js or the browser, requestly works everywhere.
+- **Lightweight ♻️** - requestly is incredibly lightweight, weighing in at only 1.2kb.
 
-### Installation
+## Installation
+
+#### npm
 
 ```js
-npm install @sunney/requests
+npm install requestly
 ```
 
-### Usage
+#### yarn
 
-To use `@sunney/requests`, follow the steps below:
+```js
+yarn add requestly
+```
+
+#### pnpm
+
+```js
+pnpm add requestly
+```
+
+## Usage
 
 #### 1. Import the library
 
 ```typescript
-import { requests } from "@sunney/requests";
+import requestly from "requestly";
 ```
 
-#### 2. Create an HTTP Client
+#### 2. Create a custom instance (optional, but recommended)
 
-Creating a custom client allows you to set a base URL, default headers, manage cookies, and intercept requests/responses. By default, cookies are persisted.
+Creating a custom instance allows you to set a base URL, default headers, params, manage cookies, and intercept requests/responses.
 
 ```typescript
-const client = requests.client({
+const client = requestly.create({
   baseUrl: "https://jsonplaceholder.typicode.com",
   userAgent: "Custom User-Agent",
   headers: {
@@ -36,7 +54,6 @@ const client = requests.client({
   cookies: {
     "Custom-Cookie": "CustomCookieValue",
   },
-  persistCookies: true,
   interceptors: {
     onRequest: (url, init) => {
       // Modify request before it is sent
@@ -46,6 +63,9 @@ const client = requests.client({
     },
   },
 });
+
+// or create a client with a custom baseUrl without any options
+const client = requestly.create("https://jsonplaceholder.typicode.com");
 ```
 
 #### 3. Make a GET request
@@ -57,16 +77,16 @@ const response = await client.get("/todos/1");
 console.log(response.data);
 ```
 
-### Features
+## Features
 
 #### Automatically save cookies from responses
 
-By default, cookies are persisted. You can change this behavior by setting the `persistCookies` option when creating a client.
+By default, cookies are persisted. You can change this behavior by setting the `storeCookies` option when creating a client.
 
 ```typescript
-const client = requests.client({
+const client = requestly.create({
   baseUrl: "https://jsonplaceholder.typicode.com",
-  persistCookies: false,
+  storeCookies: false,
 });
 ```
 
@@ -75,7 +95,7 @@ const client = requests.client({
 You can intercept requests and responses to modify them before they are sent or after they are received.
 
 ```typescript
-const client = requests.client({
+const client = requestly.create({
   baseUrl: "https://jsonplaceholder.typicode.com",
   interceptors: {
     onRequest: (url, init) => {

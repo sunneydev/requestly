@@ -1,3 +1,23 @@
+export interface RequestsOptions {
+  baseUrl?: string;
+  userAgent?: string;
+  headers?: Record<string, string>;
+  cookies?: Record<string, string>;
+  params?: Record<string, string>;
+  storeCookies?: boolean;
+  interceptors?: {
+    onRequest?: (
+      url: string,
+      init: RequestInit
+    ) => MaybePromise<RequestInit | void>;
+    onResponse?: <T>(
+      url: string,
+      init: RequestInit,
+      response: RequestResponse<T>
+    ) => MaybePromise<void>;
+  };
+}
+
 export type MaybePromise<T> = T | Promise<T>;
 
 export interface RequestOptions<T = any> {

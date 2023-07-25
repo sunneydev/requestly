@@ -9,7 +9,7 @@ export default defineConfig((flags) => {
   };
 
   return {
-    entry: ["src/index.ts"],
+    entry: ["src/index.ts", "src/types.ts"],
     outDir: "lib",
     ...buildOptions,
   };

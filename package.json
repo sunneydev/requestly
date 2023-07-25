@@ -1,12 +1,24 @@
 {
-  "name": "@sunney/requests",
-  "version": "0.2.7",
+  "name": "requestly",
+  "version": "0.0.2",
   "description": "A minimal, but powerful HTTP Client for Node.js",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
-  "main": "./lib/index.js",
-  "module": "./lib/index.mjs",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./lib/index.js",
+      "require": "./lib/index.cjs",
+      "types": "./lib/index.d.ts"
+    },
+    "./types": {
+      "import": "./lib/types.js",
+      "require": "./lib/types.cjs",
+      "types": "./lib/types.d.ts"
+    }
+  },
   "types": "./lib/index.d.ts",
   "files": [
     "lib"
@@ -20,6 +32,7 @@
     "isomorphic-fetch": "^3.0.0"
   },
   "devDependencies": {
+    "@types/isomorphic-fetch": "^0.0.36",
     "tsup": "6.7.0",
     "typescript": "5.0.4"
   },
@@ -39,6 +52,6 @@
     "node-fetch",
     "got",
     "isomorphic-fetch",
-    "networking"
+    "http"
   ]
 }
