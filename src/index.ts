@@ -194,20 +194,52 @@ export class Requestly {
     return this._request<T>(url, "GET", options);
   }
 
-  public post<T>(url: string, options?: RequestOptions) {
-    return this._request<T>(url, "POST", options);
+  public post<T>(options: RequestOptions): Promise<RequestResponse<T>>;
+  public post<T>(
+    urlOrOptions: string | RequestOptions,
+    options?: RequestOptions
+  ) {
+    if (typeof urlOrOptions === "string") {
+      return this._request<T>(urlOrOptions, "POST", options);
+    }
+
+    return this._request<T>("", "POST", options);
   }
 
-  public put<T>(url: string, options?: RequestOptions) {
-    return this._request<T>(url, "PUT", options);
+  public put<T>(options: RequestOptions): Promise<RequestResponse<T>>;
+  public put<T>(
+    urlOrOptions: string | RequestOptions,
+    options?: RequestOptions
+  ) {
+    if (typeof urlOrOptions === "string") {
+      return this._request<T>(urlOrOptions, "PUT", options);
+    }
+
+    return this._request<T>("", "PUT", options);
   }
 
-  public delete<T>(url: string, options?: RequestOptions) {
-    return this._request<T>(url, "DELETE", options);
+  public delete<T>(options: RequestOptions): Promise<RequestResponse<T>>;
+  public delete<T>(
+    urlOrOptions: string | RequestOptions,
+    options?: RequestOptions
+  ) {
+    if (typeof urlOrOptions === "string") {
+      return this._request<T>(urlOrOptions, "DELETE", options);
+    }
+
+    return this._request<T>("", "DELETE", options);
   }
 
-  public patch<T>(url: string, options?: RequestOptions) {
-    return this._request<T>(url, "PATCH", options);
+  public patch<T>(options: RequestOptions): Promise<RequestResponse<T>>;
+  public patch<T>(
+    urlOrOptions: string | RequestOptions,
+    options?: RequestOptions
+  ) {
+    if (typeof urlOrOptions === "string") {
+      return this._request<T>(urlOrOptions, "PATCH", options);
+    }
+
+    return this._request<T>("", "PATCH", options);
   }
 
   public intercept({
