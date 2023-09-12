@@ -55,7 +55,9 @@ export class Requestly {
       ...this._params,
     });
 
-    const uri = `${this._baseUrl}${url}${params}`;
+    let uri = `${this._baseUrl}${url}${params}`;
+
+    uri.endsWith("/") && (uri = uri.slice(0, -1));
 
     const additionalHeaders = {
       ...(options?.body && {
