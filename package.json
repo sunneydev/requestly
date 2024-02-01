@@ -1,6 +1,6 @@
 {
   "name": "requestly",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "description": "A minimal, but powerful HTTP Client for Node.js",
   "publishConfig": {
     "access": "public",
@@ -28,13 +28,9 @@
     "build": "tsup",
     "prepublishOnly": "pnpm run build"
   },
-  "dependencies": {
-    "isomorphic-fetch": "^3.0.0"
-  },
   "devDependencies": {
-    "@types/isomorphic-fetch": "^0.0.36",
-    "tsup": "6.7.0",
-    "typescript": "5.0.4"
+    "tsup": "8.0.1",
+    "typescript": "5.3.3"
   },
   "repository": {
     "type": "git",

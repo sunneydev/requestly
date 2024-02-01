@@ -5,7 +5,6 @@ import type {
   RequestsOptions,
 } from "./types";
 import * as utils from "./utils";
-import "isomorphic-fetch";
 
 export class Requestly {
   private _baseUrl?: string;
