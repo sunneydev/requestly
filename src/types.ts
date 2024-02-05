@@ -1,21 +1,28 @@
-export interface RequestsOptions {
+export type RequestMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+
+export type OnResponse<T = any> = (
+  url: string,
+  init: RequestInit,
+  response: RequestlyResponse<T>
+) =>
+  | RequestlyResponse<T>
+  | Promise<RequestlyResponse<T>>
+  | Promise<T>
+  | T
+  | void;
+
+export interface RequestlyOptions {
   baseUrl?: string;
   userAgent?: string;
   headers?: Record<string, string>;
   cookies?: Record<string, string>;
   params?: Record<string, string>;
   storeCookies?: boolean;
-  interceptors?: {
-    onRequest?: (
-      url: string,
-      init: RequestInit
-    ) => MaybePromise<RequestInit | void>;
-    onResponse?: <T>(
-      url: string,
-      init: RequestInit,
-      response: RequestResponse<T>
-    ) => MaybePromise<void>;
-  };
+  onRequest?: (
+    url: string,
+    init: RequestInit
+  ) => MaybePromise<RequestInit | void>;
+  onResponse?: OnResponse;
 }
 
 export type MaybePromise<T> = T | Promise<T>;
@@ -34,7 +41,7 @@ export interface RequestOptions<T = any> {
   body?: T;
 }
 
-export interface RequestResponse<T> extends Omit<Response, "text" | "json"> {
+export interface RequestlyResponse<T> extends Omit<Response, "text" | "json"> {
   request: {
     url: string;
     method: string;

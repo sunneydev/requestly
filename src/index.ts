@@ -1,8 +1,9 @@
 import type {
   MaybePromise,
+  OnResponse,
   RequestOptions,
-  RequestResponse,
-  RequestsOptions,
+  RequestlyResponse,
+  RequestlyOptions,
 } from "./types";
 import * as utils from "./utils";
 
@@ -16,13 +17,9 @@ export class Requestly {
     url: string,
     init: RequestInit
   ) => MaybePromise<RequestInit | void>;
-  private _onResponse?: <T>(
-    url: string,
-    init: RequestInit,
-    response: RequestResponse<T>
-  ) => MaybePromise<void>;
+  private _onResponse?: OnResponse;
 
-  constructor(opts?: RequestsOptions | string) {
+  constructor(opts?: RequestlyOptions | string) {
     if (typeof opts === "string") {
       this._baseUrl = opts;
       return;
@@ -34,15 +31,14 @@ export class Requestly {
     this._params = opts?.params ?? {};
     this._storeCookies = opts?.storeCookies ?? true;
     this._headers["User-Agent"] = opts?.userAgent ?? utils.defaultUserAgent;
-    this._onRequest = opts?.interceptors?.onRequest;
-    this._onResponse = opts?.interceptors?.onResponse;
+    this._onRequest = opts?.onRequest;
   }
 
   private async _request<T = any, K extends BodyInit | null | undefined = any>(
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
     options?: RequestOptions<K>
-  ): Promise<RequestResponse<T>> {
+  ): Promise<RequestlyResponse<T>> {
     if (url.startsWith("/") && this._baseUrl == null) {
       throw new Error(
         "Cannot make request with relative URL without a base URL"
@@ -99,29 +95,28 @@ export class Requestly {
       },
     };
 
-    const response: RequestResponse<T> = await fetch(uri, requestOptions).then(
-      async (res) => {
-        const { headers } = res;
-        const isJSON = headers
-          .get("Content-Type")
-          ?.includes("application/json");
+    const response: RequestlyResponse<T> = await fetch(
+      uri,
+      requestOptions
+    ).then(async (res) => {
+      const { headers } = res;
+      const isJSON = headers.get("Content-Type")?.includes("application/json");
 
-        const cookies = utils.parseCookies(headers.get("Set-Cookie") || "");
+      const cookies = utils.parseCookies(headers.get("Set-Cookie") || "");
 
-        return {
-          ...res,
-          url: res.url,
-          ok: res.ok,
-          redirected: res.redirected,
-          status: res.status,
-          statusText: res.statusText,
-          request: { url, method, options: requestOptions },
-          headers,
-          cookies,
-          data: await (isJSON ? res.json() : res.text()),
-        };
-      }
-    );
+      return {
+        ...res,
+        url: res.url,
+        ok: res.ok,
+        redirected: res.redirected,
+        status: res.status,
+        statusText: res.statusText,
+        request: { url, method, options: requestOptions },
+        headers,
+        cookies,
+        data: await (isJSON ? res.json() : res.text()),
+      };
+    });
 
     if (options?.ignoreCookies !== false && this._storeCookies) {
       Object.entries(response.cookies).forEach(([key, value]) =>
@@ -130,13 +125,23 @@ export class Requestly {
     }
 
     if (this._onResponse) {
-      await this._onResponse(uri, requestOptions, response);
+      const middlewareResponse = await this._onResponse(
+        uri,
+        requestOptions,
+        response
+      );
+
+      if (middlewareResponse) {
+        return middlewareResponse?.headers instanceof Headers
+          ? middlewareResponse
+          : { ...response, data: middlewareResponse };
+      }
     }
 
     return response;
   }
 
-  public create(opts?: RequestsOptions) {
+  public create(opts?: RequestlyOptions | string) {
     return new Requestly(opts);
   }
 
@@ -211,15 +216,17 @@ export class Requestly {
     return this._request<T>(url, "PATCH", options);
   }
 
-  public intercept({
-    onRequest,
-    onResponse,
-  }: RequestsOptions["interceptors"] = {}) {
-    this._onRequest = onRequest ?? this._onRequest;
-    this._onResponse = onResponse ?? this._onResponse;
+  public onRequest(
+    fn: (url: string, init: RequestInit) => MaybePromise<RequestInit | void>
+  ) {
+    this._onRequest = fn;
+  }
+
+  public onResponse(fn: OnResponse) {
+    this._onResponse = fn;
   }
 }
 
-const requests = new Requestly();
+export const requestly = new Requestly();
 
-export default requests;
+export default requestly;
