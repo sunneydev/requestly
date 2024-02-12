@@ -141,6 +141,14 @@ export class Requestly {
     return response;
   }
 
+  public get baseUrl() {
+    return this._baseUrl;
+  }
+
+  public set baseUrl(url: string | undefined) {
+    this._baseUrl = url;
+  }
+
   public create(opts?: RequestlyOptions | string) {
     return new Requestly(opts);
   }
