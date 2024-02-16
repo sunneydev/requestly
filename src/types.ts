@@ -28,11 +28,6 @@ export interface RequestlyOptions {
 export type MaybePromise<T> = T | Promise<T>;
 
 export interface RequestOptions<T = any> {
-  contentType?:
-    | "application/json"
-    | "application/x-www-form-urlencoded"
-    | "text/plain"
-    | "text/html";
   headers?: Record<string, string>;
   params?: Record<string, string>;
   cookies?: Record<string, string>;

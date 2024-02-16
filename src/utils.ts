@@ -32,3 +32,39 @@ export function stringifyCookies(cookies: Record<string, string>): string {
 
   return stringified;
 }
+
+export function getBodyContentType(body: any) {
+  if (!body) {
+    return "";
+  }
+
+  if (body instanceof FormData) {
+    return "";
+  }
+
+  if (body instanceof URLSearchParams) {
+    return "application/x-www-form-urlencoded";
+  }
+
+  if (body instanceof Blob) {
+    return "application/octet-stream";
+  }
+
+  if (body instanceof ArrayBuffer) {
+    return "application/octet-stream";
+  }
+
+  if (body instanceof ReadableStream) {
+    return "application/octet-stream";
+  }
+
+  if (body instanceof URL) {
+    return "text/uri-list";
+  }
+
+  if (body instanceof Uint8Array) {
+    return "application/octet-stream";
+  }
+
+  return "application/json";
+}

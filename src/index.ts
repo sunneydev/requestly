@@ -54,10 +54,10 @@ export class Requestly {
 
     uri.endsWith("/") && (uri = uri.slice(0, -1));
 
+    const bodyContentType = utils.getBodyContentType(options?.body);
+
     const additionalHeaders = {
-      ...(options?.body && {
-        "Content-Type": options?.contentType || "application/json", // default to JSON, cause why not
-      }),
+      ...(bodyContentType ? { "Content-Type": bodyContentType } : {}),
       ...options?.headers,
     };
 
