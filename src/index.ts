@@ -61,12 +61,14 @@ export class Requestly {
       ...options?.headers,
     };
 
+    const cookie = this.cookies.toString();
+
     let requestOptions: RequestInit = {
       method,
       headers: {
         ...this.headers.getAll(),
         ...additionalHeaders,
-        Cookie: this.cookies.toString(),
+        ...(cookie ? { Cookie: cookie } : {}),
       },
       body:
         typeof options?.body === "object" &&
