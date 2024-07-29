@@ -76,7 +76,8 @@ export class Requestly {
         !(options?.body instanceof URLSearchParams) &&
         !(options?.body instanceof Blob) &&
         !(options?.body instanceof ArrayBuffer) &&
-        !(options?.body instanceof ReadableStream) &&
+        (typeof ReadableStream === "undefined" ||
+          !(options?.body instanceof ReadableStream)) &&
         !(options?.body instanceof URL) &&
         !(options?.body instanceof Uint8Array)
           ? JSON.stringify(options?.body)
@@ -120,10 +121,10 @@ export class Requestly {
       };
     });
 
-    if (options?.ignoreCookies !== false && this._storeCookies) {
-      Object.entries(response.cookies).forEach(([key, value]) =>
-        this.cookies.set(key, value)
-      );
+    if (options?.ignoreCookies === false && this._storeCookies) {
+      Object.entries(response.cookies).forEach(([key, value]) => {
+        this.cookies.set(key, value);
+      });
     }
 
     if (this._onResponse) {

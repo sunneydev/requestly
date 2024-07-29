@@ -1,6 +1,6 @@
 {
   "name": "requestly",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "A minimal, but powerful HTTP Client for Node.js",
   "publishConfig": {
     "access": "public",
