@@ -54,7 +54,8 @@ export function getBodyContentType(body: any) {
     return "application/octet-stream";
   }
 
-  if (body instanceof ReadableStream) {
+  // Check for ReadableStream only if it exists in the environment
+  if (typeof ReadableStream !== "undefined" && body instanceof ReadableStream) {
     return "application/octet-stream";
   }
 
@@ -64,6 +65,11 @@ export function getBodyContentType(body: any) {
 
   if (body instanceof Uint8Array) {
     return "application/octet-stream";
+  }
+
+  // Add a check for React Native's Blob implementation
+  if (typeof body.uri === "string" && typeof body.type === "string") {
+    return body.type || "application/octet-stream";
   }
 
   return "application/json";
