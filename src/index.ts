@@ -121,7 +121,7 @@ export class Requestly {
       };
     });
 
-    if (options?.ignoreCookies === false && this._storeCookies) {
+    if (this._storeCookies) {
       Object.entries(response.cookies).forEach(([key, value]) => {
         this.cookies.set(key, value);
       });

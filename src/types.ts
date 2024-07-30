@@ -31,7 +31,6 @@ export interface RequestOptions<T = any> {
   headers?: Record<string, string>;
   params?: Record<string, string>;
   cookies?: Record<string, string>;
-  ignoreCookies?: boolean;
 
   body?: T;
 }
