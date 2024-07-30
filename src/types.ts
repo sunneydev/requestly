@@ -15,9 +15,9 @@ export interface RequestlyOptions {
   baseUrl?: string;
   userAgent?: string;
   headers?: Record<string, string>;
-  cookies?: Record<string, string>;
   params?: Record<string, string>;
-  storeCookies?: boolean;
+  cookies?: Record<string, string>[];
+  maxRedirects?: number;
   onRequest?: (
     url: string,
     init: RequestInit
@@ -41,6 +41,5 @@ export interface RequestlyResponse<T> extends Omit<Response, "text" | "json"> {
     method: string;
     options?: RequestInit;
   };
-  cookies: Record<string, string>;
   data: T;
 }

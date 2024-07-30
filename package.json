@@ -1,6 +1,6 @@
 {
   "name": "requestly",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "A minimal, but powerful HTTP Client for Node.js",
   "publishConfig": {
     "access": "public",
@@ -30,6 +30,8 @@
     "prepublishOnly": "pnpm run build"
   },
   "devDependencies": {
+    "@types/set-cookie-parser": "^2.4.10",
+    "@types/tough-cookie": "^4.0.5",
     "tsup": "8.0.1",
     "typescript": "5.3.3"
   },
@@ -50,5 +52,9 @@
     "got",
     "isomorphic-fetch",
     "http"
-  ]
+  ],
+  "dependencies": {
+    "set-cookie-parser": "^2.6.0",
+    "tough-cookie": "^4.1.4"
+  }
 }

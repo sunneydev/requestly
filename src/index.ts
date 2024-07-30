@@ -1,3 +1,5 @@
+import { CookieJar } from "tough-cookie";
+import { splitCookiesString } from "set-cookie-parser";
 import type {
   MaybePromise,
   OnResponse,
@@ -7,37 +9,45 @@ import type {
 } from "./types";
 import * as utils from "./utils";
 
+const redirectStatus = new Set([301, 302, 303, 307, 308]);
+
 export class Requestly {
   private _baseUrl?: string;
   private _headers: Record<string, string> = {};
-  private _cookies: Record<string, string> = {};
   private _params?: Record<string, string> = {};
-  private _storeCookies?: boolean;
+  private _cookieJar: CookieJar;
   private _onRequest?: (
     url: string,
     init: RequestInit
   ) => MaybePromise<RequestInit | void>;
   private _onResponse?: OnResponse;
+  private _maxRedirects: number;
 
   constructor(opts?: RequestlyOptions | string) {
     if (typeof opts === "string") {
       this._baseUrl = opts;
+      this._cookieJar = new CookieJar();
+      this._maxRedirects = 20;
       return;
     }
 
     this._baseUrl = opts?.baseUrl ?? "";
     this._headers = opts?.headers ?? {};
-    this._cookies = opts?.cookies ?? {};
     this._params = opts?.params ?? {};
-    this._storeCookies = opts?.storeCookies ?? true;
+    this._cookieJar = new CookieJar();
+    if (opts?.cookies) {
+      this.cookies.deserialize(opts.cookies);
+    }
     this._headers["User-Agent"] = opts?.userAgent ?? utils.defaultUserAgent;
     this._onRequest = opts?.onRequest;
+    this._maxRedirects = opts?.maxRedirects ?? 20;
   }
 
   private async _request<T = any, K extends BodyInit | null | undefined = any>(
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
-    options?: RequestOptions<K>
+    options?: RequestOptions<K>,
+    redirectCount = 0
   ): Promise<RequestlyResponse<T>> {
     if (url.startsWith("/") && this._baseUrl == null) {
       throw new Error(
@@ -61,14 +71,15 @@ export class Requestly {
       ...options?.headers,
     };
 
-    const cookie = this.cookies.toString();
+    // Get cookies for the current URL
+    const cookieString = await this._cookieJar.getCookieString(uri);
 
     let requestOptions: RequestInit = {
       method,
       headers: {
         ...this.headers.getAll(),
         ...additionalHeaders,
-        ...(cookie ? { Cookie: cookie } : {}),
+        ...(cookieString ? { Cookie: cookieString } : {}),
       },
       body:
         typeof options?.body === "object" &&
@@ -96,53 +107,98 @@ export class Requestly {
         ...requestOptions.headers,
         ...middlewareRequestOptions?.headers,
       },
-    };
+      redirect: "manual",
+    } satisfies RequestInit;
 
-    const response: RequestlyResponse<T> = await fetch(
-      uri,
-      requestOptions
-    ).then(async (res) => {
-      const { headers } = res;
-      const isJSON = headers.get("Content-Type")?.includes("application/json");
+    const response = await fetch(uri, requestOptions);
 
-      const cookies = utils.parseCookies(headers.get("Set-Cookie") || "");
-
-      return {
-        ...res,
-        url: res.url,
-        ok: res.ok,
-        redirected: res.redirected,
-        status: res.status,
-        statusText: res.statusText,
-        request: { url, method, options: requestOptions },
-        headers,
-        cookies,
-        data: await (isJSON ? res.json() : res.text()),
-      };
-    });
-
-    if (this._storeCookies) {
-      Object.entries(response.cookies).forEach(([key, value]) => {
-        this.cookies.set(key, value);
-      });
+    // Handle Set-Cookie headers
+    const setCookieHeader = response.headers.get("Set-Cookie");
+    if (setCookieHeader) {
+      const cookies = splitCookiesString(setCookieHeader);
+      for (const cookie of cookies) {
+        await this._cookieJar.setCookie(cookie, uri, { ignoreError: true });
+      }
     }
+
+    // Handle redirects
+    if (
+      redirectStatus.has(response.status) &&
+      redirectCount < this._maxRedirects
+    ) {
+      const location = response.headers.get("Location");
+      if (location) {
+        const redirectUrl = new URL(location, uri).toString();
+        const redirectMethod = response.status === 303 ? "GET" : method;
+        const redirectBody =
+          response.status === 303 ? undefined : options?.body;
+        return this._request(
+          redirectUrl,
+          redirectMethod,
+          { ...options, body: redirectBody },
+          redirectCount + 1
+        );
+      }
+    }
+
+    const isJSON = response.headers
+      .get("Content-Type")
+      ?.includes("application/json");
+
+    const responseData: RequestlyResponse<T> = {
+      ...response,
+      url: response.url,
+      ok: response.ok,
+      redirected: redirectCount > 0,
+      status: response.status,
+      statusText: response.statusText,
+      request: { url, method, options: requestOptions },
+      headers: response.headers,
+      data: await (isJSON ? response.json() : response.text()),
+    };
 
     if (this._onResponse) {
       const middlewareResponse = await this._onResponse(
         uri,
         requestOptions,
-        response
+        responseData
       );
 
       if (middlewareResponse) {
         return middlewareResponse?.headers instanceof Headers
           ? middlewareResponse
-          : { ...response, data: middlewareResponse };
+          : { ...responseData, data: middlewareResponse };
       }
     }
 
-    return response;
+    return responseData;
   }
+
+  public cookies = {
+    serialize: () => {
+      return this._cookieJar.serializeSync().cookies;
+    },
+    deserialize: (cookies: Record<string, string>[]): void => {
+      this._cookieJar = CookieJar.deserializeSync({
+        rejectPublicSuffixes: true,
+        storeType: "MemoryCookieStore",
+        version: "tough-cookie@4.1.4",
+        cookies,
+      });
+    },
+    get: async (url: string): Promise<string> => {
+      return this._cookieJar.getCookieString(url);
+    },
+    getAll: async (url: string): Promise<any[]> => {
+      return this._cookieJar.getCookies(url);
+    },
+    set: async (url: string, cookie: string): Promise<void> => {
+      await this._cookieJar.setCookie(cookie, url);
+    },
+    clear: (): void => {
+      this._cookieJar = new CookieJar();
+    },
+  };
 
   public get baseUrl() {
     return this._baseUrl;
@@ -183,28 +239,6 @@ export class Requestly {
         ...this._headers,
       };
     },
-  };
-
-  public cookies = {
-    set: (key: string, value: string) => {
-      this._cookies[key] = value;
-    },
-    get: (key: string) => {
-      return this._cookies[key];
-    },
-    getAll: () => {
-      return this._cookies;
-    },
-    remove: (key: string) => {
-      delete this._cookies[key];
-    },
-    update: (cookies: Record<string, string>) => {
-      this._cookies = {
-        ...cookies,
-        ...this._cookies,
-      };
-    },
-    toString: () => utils.stringifyCookies(this.cookies.getAll()),
   };
 
   public get<T>(url: string, options?: Omit<RequestOptions, "body">) {
