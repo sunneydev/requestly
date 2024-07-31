@@ -1,4 +1,4 @@
-import { CookieJar } from "tough-cookie";
+import { Cookie, CookieJar } from "tough-cookie";
 import { splitCookiesString } from "set-cookie-parser";
 import type {
   MaybePromise,
@@ -112,12 +112,17 @@ export class Requestly {
 
     const response = await fetch(uri, requestOptions);
 
-    // Handle Set-Cookie headers
+    let cookiesObject = {} as Record<string, string>;
+
     const setCookieHeader = response.headers.get("Set-Cookie");
     if (setCookieHeader) {
       const cookies = splitCookiesString(setCookieHeader);
       for (const cookie of cookies) {
-        await this._cookieJar.setCookie(cookie, uri, { ignoreError: true });
+        const ck = await this._cookieJar.setCookie(cookie, uri, {
+          ignoreError: true,
+        });
+
+        cookiesObject[ck.key] = ck.value;
       }
     }
 
@@ -154,6 +159,7 @@ export class Requestly {
       statusText: response.statusText,
       request: { url, method, options: requestOptions },
       headers: response.headers,
+      cookies: cookiesObject,
       data: await (isJSON ? response.json() : response.text()),
     };
 

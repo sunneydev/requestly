@@ -41,5 +41,6 @@ export interface RequestlyResponse<T> extends Omit<Response, "text" | "json"> {
     method: string;
     options?: RequestInit;
   };
+  cookies: Record<string, string>;
   data: T;
 }
