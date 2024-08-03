@@ -21,7 +21,7 @@ export class Requestly {
     url: string,
     init: RequestInit
   ) => MaybePromise<RequestInit | void>;
-  private _onResponse?: OnResponse;
+  private _onResponse?: OnResponse<unknown>;
   private _maxRedirects: number;
 
   constructor(opts?: RequestlyOptions | string) {
@@ -132,7 +132,6 @@ export class Requestly {
       }
     }
 
-    // Handle redirects
     if (
       redirectStatus.has(response.status) &&
       redirectCount < this._maxRedirects
@@ -173,16 +172,16 @@ export class Requestly {
     };
 
     if (this._onResponse) {
-      const middlewareResponse = await this._onResponse(
-        uri,
-        requestOptions,
-        responseData
-      );
+      const middlewareResponse = (await this._onResponse({
+        url: uri,
+        init: requestOptions,
+        response: responseData,
+      })) as Awaited<ReturnType<OnResponse<T>>>;
 
       if (middlewareResponse) {
         return middlewareResponse?.headers instanceof Headers
           ? middlewareResponse
-          : { ...responseData, data: middlewareResponse };
+          : { ...responseData, data: middlewareResponse.data };
       }
     }
 
@@ -297,7 +296,7 @@ export class Requestly {
   }
 
   public onResponse<T>(fn: OnResponse<T>) {
-    this._onResponse = fn;
+    this._onResponse = fn as OnResponse<unknown>;
   }
 }
 
