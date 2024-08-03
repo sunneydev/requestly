@@ -43,4 +43,5 @@ export interface RequestlyResponse<T> extends Omit<Response, "text" | "json"> {
   };
   cookies: Record<string, string>;
   data: T;
+  retry: () => Promise<RequestlyResponse<T>>;
 }

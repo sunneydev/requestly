@@ -167,6 +167,9 @@ export class Requestly {
       headers: response.headers,
       cookies: cookiesObject,
       data: await (isJSON ? response.json() : response.text()),
+      retry: async () => {
+        return this._request<T, K>(url, method, options, redirectCount);
+      },
     };
 
     if (this._onResponse) {
@@ -267,14 +270,6 @@ export class Requestly {
     },
   };
 
-  public request<T>(
-    url: string,
-    method: RequestMethod,
-    options?: RequestOptions
-  ) {
-    return this._request<T>(url, method, options);
-  }
-
   public get<T>(url: string, options?: Omit<RequestOptions, "body">) {
     return this._request<T>(url, "GET", options);
   }
@@ -301,7 +296,7 @@ export class Requestly {
     this._onRequest = fn;
   }
 
-  public onResponse(fn: OnResponse) {
+  public onResponse<T>(fn: OnResponse<T>) {
     this._onResponse = fn;
   }
 }
