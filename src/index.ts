@@ -1,4 +1,4 @@
-import { Cookie, CookieJar } from "tough-cookie";
+import { CookieJar } from "tough-cookie";
 import { splitCookiesString } from "set-cookie-parser";
 import type {
   MaybePromise,
@@ -72,7 +72,12 @@ export class Requestly {
     };
 
     // Get cookies for the current URL
-    const cookieString = await this._cookieJar.getCookieString(uri);
+    const cookieString =
+      (await this._cookieJar.getCookieString(uri)) +
+      "; " +
+      Object.entries(options?.cookies ?? {})
+        .map(([key, value]) => `${key}=${value}`)
+        .join("; ");
 
     let requestOptions: RequestInit = {
       method,
@@ -192,8 +197,22 @@ export class Requestly {
         cookies,
       });
     },
-    get: async (url: string): Promise<string> => {
-      return this._cookieJar.getCookieString(url);
+    get: async (name: string, url?: string): Promise<string | null> => {
+      if (url) {
+        const cookies = await this._cookieJar.getCookies(url);
+
+        return cookies.find((cookie) => cookie.key === name)?.value ?? null;
+      }
+
+      const allCookies = await this._cookieJar.serialize();
+
+      for (const cookie of allCookies.cookies) {
+        if (cookie.key?.toLowerCase() === name.toLowerCase()) {
+          return cookie.value;
+        }
+      }
+
+      return null;
     },
     getAll: async (url: string): Promise<any[]> => {
       return this._cookieJar.getCookies(url);
