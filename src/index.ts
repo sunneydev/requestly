@@ -6,6 +6,7 @@ import type {
   RequestOptions,
   RequestlyResponse,
   RequestlyOptions,
+  RequestMethod,
 } from "./types";
 import * as utils from "./utils";
 
@@ -45,7 +46,7 @@ export class Requestly {
 
   private async _request<T = any, K extends BodyInit | null | undefined = any>(
     url: string,
-    method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
+    method: RequestMethod,
     options?: RequestOptions<K>,
     redirectCount = 0
   ): Promise<RequestlyResponse<T>> {
@@ -265,6 +266,14 @@ export class Requestly {
       };
     },
   };
+
+  public request<T>(
+    url: string,
+    method: RequestMethod,
+    options?: RequestOptions
+  ) {
+    return this._request<T>(url, method, options);
+  }
 
   public get<T>(url: string, options?: Omit<RequestOptions, "body">) {
     return this._request<T>(url, "GET", options);
