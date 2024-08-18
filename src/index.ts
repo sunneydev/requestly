@@ -1,4 +1,4 @@
-import { CookieJar } from "tough-cookie";
+import { Cookie, CookieJar } from "tough-cookie";
 import { splitCookiesString } from "set-cookie-parser";
 import type {
   MaybePromise,
@@ -89,14 +89,14 @@ export class Requestly {
       },
       body:
         typeof options?.body === "object" &&
-        !(options?.body instanceof FormData) &&
-        !(options?.body instanceof URLSearchParams) &&
-        !(options?.body instanceof Blob) &&
-        !(options?.body instanceof ArrayBuffer) &&
-        (typeof ReadableStream === "undefined" ||
-          !(options?.body instanceof ReadableStream)) &&
-        !(options?.body instanceof URL) &&
-        !(options?.body instanceof Uint8Array)
+          !(options?.body instanceof FormData) &&
+          !(options?.body instanceof URLSearchParams) &&
+          !(options?.body instanceof Blob) &&
+          !(options?.body instanceof ArrayBuffer) &&
+          (typeof ReadableStream === "undefined" ||
+            !(options?.body instanceof ReadableStream)) &&
+          !(options?.body instanceof URL) &&
+          !(options?.body instanceof Uint8Array)
           ? JSON.stringify(options?.body)
           : options?.body,
     };
@@ -220,7 +220,12 @@ export class Requestly {
     getAll: async (url: string): Promise<any[]> => {
       return this._cookieJar.getCookies(url);
     },
-    set: async (url: string, cookie: string): Promise<void> => {
+    set: async (url: string, params: { key: string, value: string }): Promise<void> => {
+      const cookie = new Cookie({
+        key: params.key,
+        value: params.value,
+      })
+
       await this._cookieJar.setCookie(cookie, url);
     },
     clear: (): void => {

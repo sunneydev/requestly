@@ -13,6 +13,7 @@ export interface RequestlyOptions {
   params?: Record<string, string>;
   cookies?: Record<string, string>[];
   maxRedirects?: number;
+  fetchOptions?: RequestInit;
   onRequest?: (
     url: string,
     init: RequestInit
