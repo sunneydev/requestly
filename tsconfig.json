@@ -1,16 +1,23 @@
 {
   "compilerOptions": {
-    "target": "es2020",
+    "target": "ESNext",
     "module": "esnext",
     "strict": true,
     "esModuleInterop": true,
-    "moduleResolution": "node",
+    "moduleResolution": "Bundler",
+    "types": ["@types/bun"],
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "noImplicitAny": true,
     "allowJs": true,
     "noEmit": true,
     "outDir": "lib",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/": ["src/index.ts"],
+      "@/*": ["src/*"],
+      "@/test/*": ["test/*"]
+    }
   }
 }

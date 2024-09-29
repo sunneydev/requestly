@@ -1,4 +1,4 @@
-import { Cookie, CookieJar } from "tough-cookie";
+import { Cookie, CookieJar, SerializedCookie } from "tough-cookie";
 import { splitCookiesString } from "set-cookie-parser";
 import type {
   MaybePromise,
@@ -65,6 +65,10 @@ export class Requestly {
 
     uri.endsWith("/") && (uri = uri.slice(0, -1));
 
+    if (!uri.startsWith("http://") && !uri.startsWith("https://")) {
+      uri = `https://${uri}`;
+    }
+
     const bodyContentType = utils.getBodyContentType(options?.body);
 
     const additionalHeaders = {
@@ -72,13 +76,7 @@ export class Requestly {
       ...options?.headers,
     };
 
-    // Get cookies for the current URL
-    const cookieString =
-      (await this._cookieJar.getCookieString(uri)) +
-      "; " +
-      Object.entries(options?.cookies ?? {})
-        .map(([key, value]) => `${key}=${value}`)
-        .join("; ");
+    const cookieString = await this._cookieJar.getCookieString(uri);
 
     let requestOptions: RequestInit = {
       method,
@@ -87,18 +85,7 @@ export class Requestly {
         ...additionalHeaders,
         ...(cookieString ? { Cookie: cookieString } : {}),
       },
-      body:
-        typeof options?.body === "object" &&
-        !(options?.body instanceof FormData) &&
-        !(options?.body instanceof URLSearchParams) &&
-        !(options?.body instanceof Blob) &&
-        !(options?.body instanceof ArrayBuffer) &&
-        (typeof ReadableStream === "undefined" ||
-          !(options?.body instanceof ReadableStream)) &&
-        !(options?.body instanceof URL) &&
-        !(options?.body instanceof Uint8Array)
-          ? JSON.stringify(options?.body)
-          : options?.body,
+      body: utils.serializeBody(options?.body),
     };
 
     const middlewareRequestOptions = await this._onRequest?.(
@@ -109,27 +96,32 @@ export class Requestly {
     requestOptions = {
       ...requestOptions,
       ...middlewareRequestOptions,
-      headers: {
-        ...requestOptions.headers,
-        ...middlewareRequestOptions?.headers,
-      },
       redirect: "manual",
     } satisfies RequestInit;
 
     const response = await fetch(uri, requestOptions);
 
-    let cookiesObject = {} as Record<string, string>;
+    let cookies: Record<string, string> = {};
 
     const setCookieHeader = response.headers.get("Set-Cookie");
-    if (setCookieHeader) {
-      const cookies = splitCookiesString(setCookieHeader);
-      for (const cookie of cookies) {
-        const ck = await this._cookieJar.setCookie(cookie, uri, {
-          ignoreError: true,
-        });
 
-        cookiesObject[ck.key] = ck.value;
+    if (setCookieHeader) {
+      const cookieArr = splitCookiesString(setCookieHeader);
+
+      for (const ca of cookieArr) {
+        const cookie = Cookie.parse(ca);
+
+        if (!cookie) continue;
+
+        cookies[cookie.key] = cookie.value;
+        await this._cookieJar.setCookie(cookie, uri, { ignoreError: true });
       }
+    }
+
+    // Add this section to get all cookies for the current URL
+    const allCookies = await this._cookieJar.getCookies(uri);
+    for (const cookie of allCookies) {
+      cookies[cookie.key] = cookie.value;
     }
 
     if (
@@ -138,7 +130,7 @@ export class Requestly {
     ) {
       const location = response.headers.get("Location");
       if (location) {
-        const redirectUrl = new URL(location, uri).toString();
+        const redirectUrl = new URL(location, uri).pathname;
         const redirectMethod = response.status === 303 ? "GET" : method;
         const redirectBody =
           response.status === 303 ? undefined : options?.body;
@@ -151,47 +143,40 @@ export class Requestly {
       }
     }
 
-    const isJSON = response.headers
-      .get("Content-Type")
-      ?.includes("application/json");
-
-    const responseData: RequestlyResponse<T> = {
-      ...response,
-      url: response.url,
-      ok: response.ok,
-      redirected: redirectCount > 0,
-      status: response.status,
-      statusText: response.statusText,
-      request: { url, method, options: requestOptions },
-      headers: response.headers,
-      cookies: cookiesObject,
-      data: await (isJSON ? response.json() : response.text()),
-      retry: async () => {
-        return this._request<T, K>(url, method, options, redirectCount);
+    let responseData: RequestlyResponse<T> = await utils.createResponseData(
+      response,
+      {
+        url,
+        method,
+        options: requestOptions,
+        redirectCount,
       },
-    };
+      () => this._request(url, method, options, redirectCount + 1)
+    );
 
     if (this._onResponse) {
       const middlewareResponse = (await this._onResponse({
         url: uri,
         init: requestOptions,
         response: responseData,
-      })) as Awaited<ReturnType<OnResponse<T>>>;
+      })) as RequestlyResponse<T>;
 
       if (middlewareResponse) {
-        return middlewareResponse?.headers instanceof Headers
+        return middlewareResponse.headers instanceof Headers
           ? middlewareResponse
-          : { ...responseData, data: middlewareResponse.data };
+          : { ...responseData, data: middlewareResponse.data as T };
       }
     }
 
-    return responseData;
+    return {
+      ...responseData,
+      cookies,
+    };
   }
 
   public cookies = {
-    serialize: () => {
-      return this._cookieJar.serializeSync().cookies;
-    },
+    serialize: () =>
+      this._cookieJar.serializeSync()?.cookies ?? ([] as SerializedCookie[]),
     deserialize: (cookies: Record<string, string>[]): void => {
       this._cookieJar = CookieJar.deserializeSync({
         rejectPublicSuffixes: true,
@@ -211,7 +196,7 @@ export class Requestly {
 
       for (const cookie of allCookies.cookies) {
         if (cookie.key?.toLowerCase() === name.toLowerCase()) {
-          return cookie.value;
+          return cookie.value ?? null;
         }
       }
 
@@ -220,16 +205,10 @@ export class Requestly {
     getAll: async (url: string): Promise<any[]> => {
       return this._cookieJar.getCookies(url);
     },
-    set: async (
-      url: string,
-      params: { key: string; value: string }
-    ): Promise<void> => {
-      const cookie = new Cookie({
-        key: params.key,
-        value: params.value,
-      });
+    set: async (url: string, params: { key: string; value: string }) => {
+      const cookie = new Cookie(params);
 
-      await this._cookieJar.setCookie(cookie, url);
+      this._cookieJar.setCookie(cookie, url);
     },
     clear: (): void => {
       this._cookieJar = new CookieJar();
@@ -297,15 +276,25 @@ export class Requestly {
     return this._request<T>(url, "PATCH", options);
   }
 
-  public onRequest(
-    fn: (url: string, init: RequestInit) => MaybePromise<RequestInit | void>
-  ) {
-    this._onRequest = fn;
-  }
+  public onRequest = {
+    set: (
+      fn: (url: string, init: RequestInit) => MaybePromise<RequestInit | void>
+    ) => {
+      this._onRequest = fn;
+    },
+    remove: () => {
+      this._onRequest = undefined;
+    },
+  };
 
-  public onResponse<T>(fn: OnResponse<T>) {
-    this._onResponse = fn as OnResponse<unknown>;
-  }
+  public onResponse = {
+    set: <T>(fn: OnResponse<T>) => {
+      this._onResponse = fn as OnResponse<unknown>;
+    },
+    remove: () => {
+      this._onResponse = undefined;
+    },
+  };
 
   public fetch(
     url: string,

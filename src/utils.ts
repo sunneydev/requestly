@@ -1,76 +1,62 @@
-export const defaultUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36`;
+import { RequestlyResponse } from "./types";
 
-export function stringifyParams(params: Record<string, string>): string {
-  const paramsString = new URLSearchParams(params).toString();
+export const defaultUserAgent = "Requestly/1.0";
 
-  return paramsString ? `?${paramsString}` : "";
+export function stringifyParams(params?: Record<string, string>): string {
+  if (!params) return "";
+  const searchParams = new URLSearchParams(params);
+  return searchParams.toString() ? `?${searchParams.toString()}` : "";
 }
 
-export function parseCookies(cookies: string): Record<string, string> {
-  const parsedCookies: Record<string, string> = {};
-  const cookiePairs = cookies
-    .split(",")
-    .map((cookie) => cookie.trim().split(";")[0])
-    .filter((cookie) => cookie?.includes("=")) as string[];
-
-  for (const cookiePair of cookiePairs) {
-    const [key, value] = cookiePair.split("=");
-    if (!key || !value) {
-      continue;
-    }
-
-    parsedCookies[key.trim()] = value.trim();
-  }
-
-  return parsedCookies;
-}
-
-export function stringifyCookies(cookies: Record<string, string>): string {
-  const stringified = Object.entries(cookies)
-    .map(([key, value]) => encodeURI(`${key}=${value}`))
-    .join("; ");
-
-  return stringified;
-}
-
-export function getBodyContentType(body: any) {
-  if (!body) {
-    return "";
-  }
-
+export function getBodyContentType(body: any): string | undefined {
   if (body instanceof FormData) {
-    return "";
-  }
-
-  if (body instanceof URLSearchParams) {
+    return "multipart/form-data";
+  } else if (body instanceof URLSearchParams) {
     return "application/x-www-form-urlencoded";
+  } else if (typeof body === "object" && body !== null) {
+    return "application/json";
+  }
+  return undefined;
+}
+
+export function serializeBody(body: any): BodyInit | null | undefined {
+  if (typeof body === "object" && body !== null) {
+    return JSON.stringify(body);
   }
 
-  if (body instanceof Blob) {
-    return "application/octet-stream";
-  }
+  return body;
+}
 
-  if (body instanceof ArrayBuffer) {
-    return "application/octet-stream";
-  }
+export async function createResponseData<T>(
+  response: Response,
+  requestInfo: {
+    url: string;
+    method: string;
+    options: RequestInit;
+    redirectCount: number;
+  },
+  retry: () => Promise<RequestlyResponse<T>>
+): Promise<RequestlyResponse<T>> {
+  const isJSON = response.headers
+    .get("Content-Type")
+    ?.includes("application/json");
+  const data = await (isJSON ? response.json() : response.text());
 
-  // Check for ReadableStream only if it exists in the environment
-  if (typeof ReadableStream !== "undefined" && body instanceof ReadableStream) {
-    return "application/octet-stream";
-  }
-
-  if (body instanceof URL) {
-    return "text/uri-list";
-  }
-
-  if (body instanceof Uint8Array) {
-    return "application/octet-stream";
-  }
-
-  // Add a check for React Native's Blob implementation
-  if (typeof body.uri === "string" && typeof body.type === "string") {
-    return body.type || "application/octet-stream";
-  }
-
-  return "application/json";
+  return {
+    ...response,
+    url: response.url,
+    ok: response.ok,
+    redirected: requestInfo.redirectCount > 0,
+    status: response.status,
+    statusText: response.statusText,
+    request: {
+      url: requestInfo.url,
+      method: requestInfo.method,
+      options: requestInfo.options,
+    },
+    cookies: {}, // This will be populated in the _request method
+    headers: response.headers,
+    data,
+    retry,
+  };
 }

@@ -1,6 +1,6 @@
 export type RequestMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 
-export type OnResponse<T> = (params: {
+export type OnResponse<T = unknown> = (params: {
   url: string;
   init: RequestInit;
   response: RequestlyResponse<T>;
@@ -27,11 +27,11 @@ export interface RequestOptions<T = any> {
   headers?: Record<string, string>;
   params?: Record<string, string>;
   cookies?: Record<string, string>;
-
   body?: T;
 }
 
-export interface RequestlyResponse<T> extends Omit<Response, "text" | "json"> {
+export interface RequestlyResponse<T = unknown | string>
+  extends Omit<Response, "text" | "json"> {
   request: {
     url: string;
     method: string;
