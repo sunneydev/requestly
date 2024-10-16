@@ -1,4 +1,4 @@
-import { Cookie, CookieJar, SerializedCookie } from "tough-cookie";
+import { Cookie, CookieJar, SerializedCookie } from "./cookie";
 import { splitCookiesString } from "set-cookie-parser";
 import type {
   MaybePromise,
@@ -118,7 +118,6 @@ export class Requestly {
       }
     }
 
-    // Add this section to get all cookies for the current URL
     const allCookies = await this._cookieJar.getCookies(uri);
     for (const cookie of allCookies) {
       cookies[cookie.key] = cookie.value;
@@ -192,7 +191,7 @@ export class Requestly {
         return cookies.find((cookie) => cookie.key === name)?.value ?? null;
       }
 
-      const allCookies = await this._cookieJar.serialize();
+      const allCookies = this._cookieJar.serializeSync();
 
       for (const cookie of allCookies.cookies) {
         if (cookie.key?.toLowerCase() === name.toLowerCase()) {
