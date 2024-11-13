@@ -2,21 +2,47 @@ import { RequestlyResponse } from "./types";
 
 export const defaultUserAgent = "Requestly/1.0";
 
-export function stringifyParams(params?: Record<string, string>): string {
-  if (!params) return "";
-  const searchParams = new URLSearchParams(params);
-  return searchParams.toString() ? `?${searchParams.toString()}` : "";
-}
-
-export function getBodyContentType(body: any): string | undefined {
-  if (body instanceof FormData) {
-    return "multipart/form-data";
-  } else if (body instanceof URLSearchParams) {
-    return "application/x-www-form-urlencoded";
-  } else if (typeof body === "object" && body !== null) {
-    return "application/json";
+export function processBody(body: any) {
+  if (body == null) {
+    return { body, contentType: null };
   }
-  return undefined;
+
+  if (body instanceof FormData) {
+    return { body, contentType: null };
+  }
+
+  if (body instanceof URLSearchParams) {
+    return { body, contentType: "application/x-www-form-urlencoded" };
+  }
+
+  if (body instanceof Blob || body instanceof File) {
+    return {
+      body,
+      contentType: body.type || "application/octet-stream",
+    };
+  }
+
+  if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
+    return { body, contentType: "application/octet-stream" };
+  }
+
+  if (typeof body === "object") {
+    return {
+      body: JSON.stringify(body),
+      contentType: "application/json",
+    };
+  }
+
+  if (typeof body === "string") {
+    try {
+      JSON.parse(body);
+      return { body, contentType: "application/json" };
+    } catch {
+      return { body, contentType: "text/plain" };
+    }
+  }
+
+  return { body, contentType: null };
 }
 
 export function serializeBody(body: any): BodyInit | null | undefined {
@@ -127,4 +153,131 @@ export function splitCookiesString(cookiesString: string | string[]): string[] {
   }
 
   return cookiesStrings;
+}
+
+export class URLHandler {
+  // Cached regex patterns
+  private static readonly URL_PATTERN = /^https?:\/\//i;
+  private static readonly PROTOCOL_PATTERN = /^(https?:\/\/)/i;
+  private static readonly MULTIPLE_SLASHES = /\/+/g;
+  private static readonly TRAILING_SLASH = /\/+$/;
+  private static readonly LEADING_SLASH = /^\/+/;
+
+  /**
+   * Creates a complete URL by combining path, base URL, and query parameters
+   * @param path - URL path or complete URL
+   * @param params - Optional query parameters
+   * @returns Complete URL string
+   */
+  public createUrl(
+    path: string,
+    baseUrl: string = "",
+    params?: Record<string, string | undefined>
+  ): string {
+    try {
+      baseUrl = this.normalizeUrl(baseUrl);
+
+      // Quick return if no path
+      if (!path) {
+        return this.addQueryParams(baseUrl, params);
+      }
+
+      // Return cleaned absolute URLs directly
+      if (URLHandler.URL_PATTERN.test(path)) {
+        return this.addQueryParams(this.cleanUrl(path), params);
+      }
+
+      // Handle paths starting with multiple slashes
+      if (path.startsWith("//")) {
+        throw new Error("Invalid path: Cannot start with multiple slashes");
+      }
+
+      // Construct full URL
+      const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+      const baseUrlToUse = baseUrl || "https://";
+      const fullUrl = baseUrl
+        ? `${baseUrlToUse}/${normalizedPath}`
+        : `https://${normalizedPath}`;
+
+      // Add query parameters and return
+      return this.addQueryParams(this.cleanUrl(fullUrl), params);
+    } catch (error) {
+      // Throw specific error for invalid URLs
+      throw new Error(
+        `Invalid URL creation: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  /**
+   * Internal helper to normalize URLs
+   */
+  private normalizeUrl(url: string): string {
+    if (!url) return "";
+
+    try {
+      const trimmedUrl = url.trim();
+      const withProtocol = URLHandler.URL_PATTERN.test(trimmedUrl)
+        ? trimmedUrl
+        : `https://${trimmedUrl}`;
+
+      const cleaned = this.cleanUrl(withProtocol);
+      new URL(cleaned); // Validate URL
+      return cleaned;
+    } catch {
+      if (url.trim()) {
+        throw new Error(`Invalid URL: ${url}`);
+      }
+      return "";
+    }
+  }
+
+  /**
+   * Internal helper to clean URLs of multiple slashes while preserving protocol
+   */
+  private cleanUrl(url: string): string {
+    const protocolMatch = url.match(URLHandler.PROTOCOL_PATTERN);
+    if (!protocolMatch) {
+      return url
+        .replace(URLHandler.MULTIPLE_SLASHES, "/")
+        .replace(URLHandler.TRAILING_SLASH, "");
+    }
+
+    const [protocol] = protocolMatch;
+    return (
+      protocol +
+      url
+        .slice(protocol.length)
+        .replace(URLHandler.MULTIPLE_SLASHES, "/")
+        .replace(URLHandler.LEADING_SLASH, "")
+        .replace(URLHandler.TRAILING_SLASH, "")
+    );
+  }
+
+  /**
+   * Internal helper to add query parameters to URL
+   */
+  private addQueryParams(
+    url: string,
+    params?: Record<string, string | undefined>
+  ): string {
+    if (!params || Object.keys(params).length === 0) return url;
+
+    try {
+      const urlObj = new URL(url);
+
+      // Add parameters efficiently
+      for (const [key, value] of Object.entries(params)) {
+        if (value != null) {
+          urlObj.searchParams.append(key, value);
+        }
+      }
+
+      return this.cleanUrl(urlObj.toString());
+    } catch {
+      throw new Error(`Invalid URL while adding parameters: ${url}`);
+    }
+  }
 }

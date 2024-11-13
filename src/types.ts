@@ -23,11 +23,18 @@ export interface RequestlyOptions {
 
 export type MaybePromise<T> = T | Promise<T>;
 
+export type Headers = Record<string, string | undefined>;
+
+export type Params = Record<string, string | undefined>;
+
+export type Cookies = Record<string, string | undefined>;
+
 export interface RequestOptions<T = any> {
-  headers?: Record<string, string>;
-  params?: Record<string, string>;
-  cookies?: Record<string, string>;
+  headers?: Headers;
+  params?: Params;
+  cookies?: Cookies;
   body?: T;
+  signal?: AbortSignal;
 }
 
 export interface RequestlyResponse<T = unknown | string>

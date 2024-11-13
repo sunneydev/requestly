@@ -18,10 +18,28 @@ app.get("/get", (c) => {
   });
 });
 
+app.get("/delay/:s", async (c) => {
+  const s = parseInt(c.req.param("s"));
+  await new Promise((resolve) => setTimeout(resolve, s * 1000));
+  return c.json({ ok: true });
+});
+
 app.post("/post", async (c) => {
-  const body = await c.req.json();
+  const contentType = c.req.header("content-type");
+
+  let data;
+
+  if (contentType?.includes("form")) {
+    data = await c.req.formData().then((formData) => {
+      const entries = Array.from(formData.entries());
+      return Object.fromEntries(entries);
+    });
+  } else {
+    data = await c.req.json();
+  }
+
   return c.json({
-    ...body,
+    ...data,
     headers: c.req.header(),
     origin: c.req.header("x-forwarded-for") || c.req.header("host"),
     url: c.req.url,

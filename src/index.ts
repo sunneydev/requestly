@@ -7,15 +7,18 @@ import type {
   RequestlyResponse,
   RequestlyOptions,
   RequestMethod,
+  Params,
+  Headers,
 } from "./types";
 import * as utils from "./utils";
+import { compress } from "hono/compress";
 
 const redirectStatus = new Set([301, 302, 303, 307, 308]);
 
 export class Requestly {
   private _baseUrl?: string;
-  private _headers: Record<string, string> = {};
-  private _params?: Record<string, string> = {};
+  private _headers: Headers = {};
+  private _params?: Params = {};
   private _cookieJar: CookieJar;
   private _onRequest?: (
     url: string,
@@ -23,6 +26,7 @@ export class Requestly {
   ) => MaybePromise<RequestInit | void>;
   private _onResponse?: OnResponse<unknown>;
   private _maxRedirects: number;
+  private _urlHandler = new utils.URLHandler();
 
   constructor(opts?: RequestlyOptions | string) {
     if (typeof opts === "string") {
@@ -56,47 +60,34 @@ export class Requestly {
       );
     }
 
-    const params = utils.stringifyParams({
+    const uri = this._urlHandler.createUrl(url, this.baseUrl, {
       ...options?.params,
       ...this._params,
     });
 
-    let uri = `${this._baseUrl}${url}${params}`;
-
-    uri.endsWith("/") && (uri = uri.slice(0, -1));
-
-    if (!uri.startsWith("http://") && !uri.startsWith("https://")) {
-      uri = `https://${uri}`;
-    }
-
-    const bodyContentType = utils.getBodyContentType(options?.body);
-
-    const additionalHeaders = {
-      ...(bodyContentType ? { "Content-Type": bodyContentType } : {}),
-      ...options?.headers,
-    };
+    const { body, contentType } = utils.processBody(options?.body);
 
     const cookieString = await this._cookieJar.getCookieString(uri);
 
-    let requestOptions: RequestInit = {
-      method,
-      headers: {
-        ...this.headers.getAll(),
-        ...additionalHeaders,
-        ...(cookieString ? { Cookie: cookieString } : {}),
-      },
-      body: utils.serializeBody(options?.body),
+    const headers = {
+      ...this.headers.getAll(),
+      ...(cookieString ? { Cookie: cookieString } : {}),
+      ...(contentType ? { "Content-Type": contentType } : {}),
+      ...options?.headers,
     };
+
+    const initialOptions = { method, body, headers } satisfies RequestInit;
 
     const middlewareRequestOptions = await this._onRequest?.(
       uri,
-      requestOptions
+      initialOptions
     );
 
-    requestOptions = {
-      ...requestOptions,
+    const requestOptions = {
+      ...initialOptions,
       ...middlewareRequestOptions,
       redirect: "manual",
+      signal: options?.signal,
     } satisfies RequestInit;
 
     const response = await fetch(uri, requestOptions);
@@ -204,7 +195,10 @@ export class Requestly {
     getAll: async (url: string): Promise<any[]> => {
       return this._cookieJar.getCookies(url);
     },
-    set: async (url: string, params: { key: string; value: string }) => {
+    set: async (
+      url: string,
+      params: ConstructorParameters<typeof Cookie>[0]
+    ) => {
       const cookie = new Cookie(params);
 
       this._cookieJar.setCookie(cookie, url);
@@ -227,10 +221,10 @@ export class Requestly {
   }
 
   public get params() {
-    return this._params;
+    return this._params ?? {};
   }
 
-  public set params(params: Record<string, string> | undefined) {
+  public set params(params: Params) {
     this._params = params;
   }
 
